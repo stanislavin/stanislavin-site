@@ -687,14 +687,24 @@ function startCamera() {
     hands.setOptions({
       maxNumHands: 2,
       modelComplexity: 1,
-      minDetectionConfidence: 0.7,
-      minTrackingConfidence: 0.5,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.4,
     });
+    let mpFrames = 0, mpHandFrames = 0;
     hands.onResults(results => {
+      mpFrames++;
+      const hasHands = results.multiHandLandmarks && results.multiHandLandmarks.length > 0;
+      if (hasHands) mpHandFrames++;
       if (!mpReady) {
         mpReady = true;
         setStatus('ok', 'Hand tracking active');
-        setTimeout(() => setStatus(''), 3000);
+      }
+      // Show debug info for first 120 frames (~4s)
+      if (mpFrames <= 120 && mpFrames % 30 === 0) {
+        setStatus('ok', `Tracking: ${mpFrames} frames, ${mpHandFrames} with hands (${canvasEl.width}x${canvasEl.height})`);
+      }
+      if (mpFrames === 120) {
+        setTimeout(() => setStatus(''), 2000);
       }
       onResults(results);
     });
