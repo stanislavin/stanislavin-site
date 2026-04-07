@@ -699,11 +699,11 @@ function startCamera() {
         mpReady = true;
         setStatus('ok', 'Hand tracking active');
       }
-      // Show debug info for first 120 frames (~4s)
-      if (mpFrames <= 120 && mpFrames % 30 === 0) {
-        setStatus('ok', `Tracking: ${mpFrames} frames, ${mpHandFrames} with hands (${canvasEl.width}x${canvasEl.height})`);
+      // Show debug info for first 300 frames (~10s)
+      if (mpFrames <= 300 && mpFrames % 30 === 0) {
+        setStatus('ok', `Tracking: ${mpFrames}f, ${mpHandFrames} hands (${canvasEl.width}x${canvasEl.height})`);
       }
-      if (mpFrames === 120) {
+      if (mpFrames === 300 && mpHandFrames > 0) {
         setTimeout(() => setStatus(''), 2000);
       }
       onResults(results);
@@ -746,13 +746,22 @@ function startCamera() {
       document.getElementById('permission-overlay').style.display = 'none';
       if (!musicPlaying) startMusic();
 
+      // Intermediate canvas for iOS compatibility — some devices
+      // fail to detect hands when passing video element directly
+      const sendCanvas = document.createElement('canvas');
+      sendCanvas.width = vw;
+      sendCanvas.height = vh;
+      const sendCtx = sendCanvas.getContext('2d');
+
       // Frame loop — draw video + send to MediaPipe
       async function frameLoop() {
         if (videoEl.readyState >= 2) {
           // Send to MediaPipe if available
           if (hands && !mpFailed) {
             try {
-              await hands.send({ image: videoEl });
+              // Draw video to temp canvas first (fixes detection on some iOS devices)
+              sendCtx.drawImage(videoEl, 0, 0, vw, vh);
+              await hands.send({ image: sendCanvas });
               mpSendErrors = 0;
             } catch(e) {
               mpSendErrors++;
