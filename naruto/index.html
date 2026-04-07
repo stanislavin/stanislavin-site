@@ -548,6 +548,7 @@ let lastFrame = null;      // offscreen canvas for clone effect
 let fireParticles = [];
 let smokeParticles = [];
 let spinAngle = 0;
+let lastResultTime = 0;    // tracks if MediaPipe is responding
 
 const videoEl  = document.getElementById('video');
 const canvasEl = document.getElementById('output-canvas');
@@ -635,10 +636,19 @@ function startCamera() {
       document.getElementById('permission-overlay').style.display = 'none';
       if (!musicPlaying) startMusic();
 
-      // Frame loop — send frames to MediaPipe
+      // Frame loop — draw video + send to MediaPipe
       async function frameLoop() {
         if (videoEl.readyState >= 2) {
-          await hands.send({ image: videoEl });
+          // If MediaPipe isn't responding (e.g. iOS), draw video directly
+          if (Date.now() - lastResultTime > 300) {
+            const W = canvasEl.width, H = canvasEl.height;
+            ctx.save();
+            ctx.scale(-1, 1);
+            ctx.translate(-W, 0);
+            ctx.drawImage(videoEl, 0, 0, W, H);
+            ctx.restore();
+          }
+          try { await hands.send({ image: videoEl }); } catch(e) {}
         }
         requestAnimationFrame(frameLoop);
       }
@@ -657,6 +667,7 @@ function startCamera() {
 // MAIN RENDER
 // ════════════════════════════════════════════════
 function onResults(results) {
+  lastResultTime = Date.now();
   const W = canvasEl.width;
   const H = canvasEl.height;
 
