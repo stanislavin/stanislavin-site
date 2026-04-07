@@ -739,17 +739,6 @@ function startCamera() {
       // Frame loop — draw video + send to MediaPipe
       async function frameLoop() {
         if (videoEl.readyState >= 2) {
-          // Draw video directly only if MediaPipe isn't keeping up
-          // Use longer timeout once MediaPipe has responded at least once
-          const fallbackMs = mpReady ? 3000 : 500;
-          if (Date.now() - lastResultTime > fallbackMs) {
-            const W = canvasEl.width, H = canvasEl.height;
-            ctx.save();
-            ctx.scale(-1, 1);
-            ctx.translate(-W, 0);
-            ctx.drawImage(videoEl, 0, 0, W, H);
-            ctx.restore();
-          }
           // Send to MediaPipe if available
           if (hands && !mpFailed) {
             try {
