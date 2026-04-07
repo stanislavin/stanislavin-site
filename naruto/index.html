@@ -690,7 +690,7 @@ function startCamera() {
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.4,
     });
-    let mpFrames = 0, mpHandFrames = 0;
+    let mpFrames = 0, mpHandFrames = 0, pixelDebug = '';
     hands.onResults(results => {
       mpFrames++;
       const hasHands = results.multiHandLandmarks && results.multiHandLandmarks.length > 0;
@@ -751,7 +751,6 @@ function startCamera() {
       sendCanvas.width = vw;
       sendCanvas.height = vh;
       const sendCtx = sendCanvas.getContext('2d', { willReadFrequently: true });
-      let pixelDebug = '';
 
       // Frame loop — draw video + send to MediaPipe
       async function frameLoop() {
