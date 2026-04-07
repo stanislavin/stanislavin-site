@@ -341,6 +341,57 @@ main {
   padding-top: 0.2rem;
 }
 
+/* ─── MediaPipe status ─── */
+#mp-status {
+  position: absolute;
+  bottom: 22px;
+  right: 10px;
+  background: rgba(0,0,0,0.7);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  color: rgba(240,222,180,0.7);
+  z-index: 3;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  display: none;
+  max-width: 55%;
+  line-height: 1.4;
+}
+
+#mp-status.loading {
+  display: block;
+  border-left: 3px solid var(--gold);
+}
+
+#mp-status.error {
+  display: block;
+  border-left: 3px solid #f87171;
+  color: #fca5a5;
+}
+
+#mp-status.ok {
+  display: block;
+  border-left: 3px solid #4ade80;
+  color: #86efac;
+}
+
+#mp-status .bar-track {
+  margin-top: 3px;
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+#mp-status .bar-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--gold);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
 /* ─── Mobile ─── */
 @media (max-width: 680px) {
   header { padding: 0.5rem 0.8rem; }
@@ -435,6 +486,7 @@ main {
     <div id="gesture-label">No hand detected</div>
     <div id="jutsu-announce"></div>
     <div id="charge-track"><div id="charge-fill"></div></div>
+    <div id="mp-status"></div>
   </div>
 
   <aside id="side-panel">
@@ -599,23 +651,73 @@ function startCamera() {
 
   lastFrame = document.createElement('canvas');
 
+  // ── Status indicator ────────────────────────────
+  const statusEl = document.getElementById('mp-status');
+  let mpReady = false;
+  let mpFailed = false;
+  let mpSendErrors = 0;
+
+  function setStatus(type, text, progress) {
+    statusEl.className = type; // 'loading', 'error', 'ok', or ''
+    if (type === '') { statusEl.style.display = 'none'; return; }
+    let html = text;
+    if (typeof progress === 'number') {
+      html += `<div class="bar-track"><div class="bar-fill" style="width:${progress}%"></div></div>`;
+    }
+    statusEl.innerHTML = html;
+  }
+
+  setStatus('loading', 'Loading hand tracking model...', 0);
+
   // ── MediaPipe Hands ─────────────────────────────
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  let hands;
 
-  const hands = new Hands({
-    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
-  });
-  hands.setOptions({
-    maxNumHands: 2,
-    modelComplexity: isMobile ? 0 : 1,   // lighter model on mobile
-    minDetectionConfidence: 0.7,
-    minTrackingConfidence: 0.5,
-  });
-  hands.onResults(onResults);
+  try {
+    hands = new Hands({
+      locateFile: f => {
+        // Track file loading progress
+        const files = { 'hands.binarypb': 20, 'hands_solution_packed_assets.data': 50,
+                        'hands_solution_simd_wasm_bin.wasm': 80, 'hands_solution_packed_assets_loader.js': 90 };
+        const pct = files[f] || 60;
+        setStatus('loading', `Loading: ${f.split('.')[0]}...`, pct);
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`;
+      }
+    });
+    hands.setOptions({
+      maxNumHands: 2,
+      modelComplexity: isMobile ? 0 : 1,
+      minDetectionConfidence: 0.7,
+      minTrackingConfidence: 0.5,
+    });
+    hands.onResults(results => {
+      if (!mpReady) {
+        mpReady = true;
+        setStatus('ok', 'Hand tracking active');
+        setTimeout(() => setStatus(''), 3000);
+      }
+      onResults(results);
+    });
+  } catch(e) {
+    mpFailed = true;
+    setStatus('error', 'Hand tracking failed to init: ' + e.message);
+    hands = null;
+  }
+
+  // Timeout: if no results after 15s, show diagnostic
+  const mpTimeout = setTimeout(() => {
+    if (!mpReady && !mpFailed) {
+      mpFailed = true;
+      const ua = navigator.userAgent;
+      setStatus('error',
+        'Hand tracking not responding. ' +
+        'Device may not support WebAssembly SIMD.<br>' +
+        '<small style="opacity:0.6">' + ua.slice(0, 80) + '</small>'
+      );
+    }
+  }, 15000);
 
   // ── Camera setup ────────────────────────────────
-  // Use getUserMedia directly for better iOS compatibility
-  // (MediaPipe's Camera util can fail on iOS Safari)
   navigator.mediaDevices.getUserMedia({
     video: { facingMode: 'user' },
     audio: false
@@ -623,9 +725,7 @@ function startCamera() {
     videoEl.srcObject = stream;
     videoEl.setAttribute('playsinline', '');
 
-    // Wait for video to have real dimensions before starting anything
     videoEl.addEventListener('loadedmetadata', () => {
-      // Set canvas buffer + CSS to match actual camera resolution exactly
       const vw = videoEl.videoWidth;
       const vh = videoEl.videoHeight;
       canvasEl.width = vw;
@@ -639,7 +739,7 @@ function startCamera() {
       // Frame loop — draw video + send to MediaPipe
       async function frameLoop() {
         if (videoEl.readyState >= 2) {
-          // If MediaPipe isn't responding (e.g. iOS), draw video directly
+          // Always draw video directly for smooth feed
           if (Date.now() - lastResultTime > 300) {
             const W = canvasEl.width, H = canvasEl.height;
             ctx.save();
@@ -648,7 +748,25 @@ function startCamera() {
             ctx.drawImage(videoEl, 0, 0, W, H);
             ctx.restore();
           }
-          try { await hands.send({ image: videoEl }); } catch(e) {}
+          // Send to MediaPipe if available
+          if (hands && !mpFailed) {
+            try {
+              await hands.send({ image: videoEl });
+              mpSendErrors = 0;
+            } catch(e) {
+              mpSendErrors++;
+              if (mpSendErrors === 1) {
+                setStatus('error', 'Hand tracking error: ' + e.message);
+              }
+              if (mpSendErrors > 10 && !mpFailed) {
+                mpFailed = true;
+                setStatus('error',
+                  'Hand tracking crashed after ' + mpSendErrors + ' errors.<br>' +
+                  '<small style="opacity:0.6">' + e.message + '</small>'
+                );
+              }
+            }
+          }
         }
         requestAnimationFrame(frameLoop);
       }
