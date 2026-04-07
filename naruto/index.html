@@ -615,14 +615,8 @@ function startCamera() {
   // ── Camera setup ────────────────────────────────
   // Use getUserMedia directly for better iOS compatibility
   // (MediaPipe's Camera util can fail on iOS Safari)
-  const camWidth = isMobile ? 480 : 640;
-  const camHeight = isMobile ? 360 : 480;
-
-  canvasEl.width = camWidth;
-  canvasEl.height = camHeight;
-
   navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'user', width: { ideal: camWidth }, height: { ideal: camHeight } },
+    video: { facingMode: 'user' },
     audio: false
   }).then(stream => {
     videoEl.srcObject = stream;
@@ -630,11 +624,12 @@ function startCamera() {
 
     // Wait for video to have real dimensions before starting anything
     videoEl.addEventListener('loadedmetadata', () => {
-      // Set canvas to match actual camera resolution exactly
+      // Set canvas buffer + CSS to match actual camera resolution exactly
       const vw = videoEl.videoWidth;
       const vh = videoEl.videoHeight;
       canvasEl.width = vw;
       canvasEl.height = vh;
+      canvasEl.style.aspectRatio = vw + '/' + vh;
 
       videoEl.play();
       document.getElementById('permission-overlay').style.display = 'none';
