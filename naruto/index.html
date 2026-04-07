@@ -500,6 +500,13 @@ main {
 
 <!-- MediaPipe Tasks Vision (newer API with better iOS support) -->
 <script type="module">
+import { HandLandmarker, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs';
+window.HandLandmarker = HandLandmarker;
+window.FilesetResolver = FilesetResolver;
+window._visionLoaded = true;
+document.dispatchEvent(new Event('vision-ready'));
+</script>
+<script>
 
 // ════════════════════════════════════════════════
 // JUTSU DEFINITIONS
@@ -672,8 +679,16 @@ function startCamera() {
 
   async function initHandLandmarker() {
     try {
-      const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs');
-      const { HandLandmarker, FilesetResolver } = vision;
+      // Wait for the vision module to load
+      if (!window._visionLoaded) {
+        await new Promise((resolve, reject) => {
+          document.addEventListener('vision-ready', resolve, { once: true });
+          setTimeout(() => reject(new Error('Vision module load timeout')), 20000);
+        });
+      }
+      const HandLandmarker = window.HandLandmarker;
+      const FilesetResolver = window.FilesetResolver;
+      if (!HandLandmarker) throw new Error('HandLandmarker not available');
       setStatus('loading', 'Loading vision WASM...', 30);
       const wasmFileset = await FilesetResolver.forVisionTasks(
         'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm'
