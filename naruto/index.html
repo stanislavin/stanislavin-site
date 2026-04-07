@@ -686,7 +686,7 @@ function startCamera() {
     });
     hands.setOptions({
       maxNumHands: 2,
-      modelComplexity: isMobile ? 0 : 1,
+      modelComplexity: 1,
       minDetectionConfidence: 0.7,
       minTrackingConfidence: 0.5,
     });
@@ -719,7 +719,7 @@ function startCamera() {
 
   // ── Camera setup ────────────────────────────────
   navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'user' },
+    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
     audio: false
   }).then(stream => {
     videoEl.srcObject = stream;
