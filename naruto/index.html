@@ -422,7 +422,7 @@ main {
 <main>
   <div id="camera-wrap">
     <video id="video" playsinline muted></video>
-    <canvas id="output-canvas" width="640" height="480"></canvas>
+    <canvas id="output-canvas"></canvas>
 
     <div id="permission-overlay">
       <div style="font-size:3.5rem">🍃</div>
@@ -627,25 +627,28 @@ function startCamera() {
   }).then(stream => {
     videoEl.srcObject = stream;
     videoEl.setAttribute('playsinline', '');
-    videoEl.play();
 
-    document.getElementById('permission-overlay').style.display = 'none';
-    if (!musicPlaying) startMusic();
-
-    // Adapt canvas to actual video dimensions once loaded
+    // Wait for video to have real dimensions before starting anything
     videoEl.addEventListener('loadedmetadata', () => {
-      canvasEl.width = videoEl.videoWidth || camWidth;
-      canvasEl.height = videoEl.videoHeight || camHeight;
-    }, { once: true });
+      // Set canvas to match actual camera resolution exactly
+      const vw = videoEl.videoWidth;
+      const vh = videoEl.videoHeight;
+      canvasEl.width = vw;
+      canvasEl.height = vh;
 
-    // Frame loop — send frames to MediaPipe
-    async function frameLoop() {
-      if (videoEl.readyState >= 2) {
-        await hands.send({ image: videoEl });
+      videoEl.play();
+      document.getElementById('permission-overlay').style.display = 'none';
+      if (!musicPlaying) startMusic();
+
+      // Frame loop — send frames to MediaPipe
+      async function frameLoop() {
+        if (videoEl.readyState >= 2) {
+          await hands.send({ image: videoEl });
+        }
+        requestAnimationFrame(frameLoop);
       }
       requestAnimationFrame(frameLoop);
-    }
-    requestAnimationFrame(frameLoop);
+    }, { once: true });
 
   }).catch(err => {
     const errEl = document.getElementById('cam-err');
@@ -659,11 +662,6 @@ function startCamera() {
 // MAIN RENDER
 // ════════════════════════════════════════════════
 function onResults(results) {
-  // Sync canvas to video size (may change after loadedmetadata on mobile)
-  if (videoEl.videoWidth && canvasEl.width !== videoEl.videoWidth) {
-    canvasEl.width = videoEl.videoWidth;
-    canvasEl.height = videoEl.videoHeight;
-  }
   const W = canvasEl.width;
   const H = canvasEl.height;
 
