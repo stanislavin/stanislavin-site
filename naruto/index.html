@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Naruto Jutsu Cam 🍃</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bangers&display=swap');
+
+:root {
+  --orange: #FF6B00;
+  --gold: #FFB800;
+  --dark: #0d0900;
+  --blue: #00BFFF;
+  --lightning: #7DF9FF;
+  --fire: #FF4500;
+  --purple: #8B5CF6;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--dark);
+  background-image:
+    radial-gradient(ellipse at 15% 50%, rgba(255,107,0,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 50%, rgba(255,184,0,0.04) 0%, transparent 55%);
+  color: #f0deb4;
+  font-family: 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+header {
+  padding: 0.8rem 1.5rem;
+  border-bottom: 1px solid rgba(255,107,0,0.25);
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+header h1 {
+  font-family: 'Bangers', cursive;
+  font-size: 2.2rem;
+  color: var(--orange);
+  text-shadow: 0 0 25px rgba(255,107,0,0.6);
+  letter-spacing: 3px;
+}
+
+header .back-link {
+  margin-left: auto;
+  color: rgba(240,222,180,0.5);
+  text-decoration: none;
+  font-size: 0.85rem;
+  border: 1px solid rgba(255,107,0,0.2);
+  padding: 0.3rem 0.7rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+header .back-link:hover { color: var(--gold); border-color: var(--orange); }
+
+main {
+  flex: 1;
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  align-items: flex-start;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ─── Camera ─── */
+#camera-wrap {
+  position: relative;
+  flex: 1;
+  background: #000;
+  border: 2px solid rgba(255,107,0,0.3);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(255,107,0,0.08);
+  min-width: 0;
+}
+
+#output-canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  aspect-ratio: 4/3;
+}
+
+#video { display: none; }
+
+/* Scanline overlay */
+#camera-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom, transparent 0, transparent 3px,
+    rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px
+  );
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* Corner decorations */
+#camera-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 12px solid transparent;
+  border-image: none;
+  background:
+    linear-gradient(var(--orange),var(--orange)) top left / 20px 2px no-repeat,
+    linear-gradient(var(--orange),var(--orange)) top left / 2px 20px no-repeat,
+    linear-gradient(var(--orange),var(--orange)) top right / 20px 2px no-repeat,
+    linear-gradient(var(--orange),var(--orange)) top right / 2px 20px no-repeat,
+    linear-gradient(var(--orange),var(--orange)) bottom left / 20px 2px no-repeat,
+    linear-gradient(var(--orange),var(--orange)) bottom left / 2px 20px no-repeat,
+    linear-gradient(var(--orange),var(--orange)) bottom right / 20px 2px no-repeat,
+    linear-gradient(var(--orange),var(--orange)) bottom right / 2px 20px no-repeat;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#permission-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  z-index: 20;
+  padding: 2rem;
+}
+
+#permission-overlay h2 {
+  font-family: 'Bangers', cursive;
+  font-size: 2.2rem;
+  color: var(--orange);
+  text-align: center;
+}
+
+#permission-overlay p {
+  color: rgba(240,222,180,0.65);
+  text-align: center;
+  max-width: 320px;
+  line-height: 1.7;
+  font-size: 0.9rem;
+}
+
+.btn {
+  padding: 0.75rem 2.2rem;
+  background: var(--orange);
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  font-family: 'Bangers', cursive;
+  font-size: 1.5rem;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background: var(--gold);
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(255,184,0,0.5);
+}
+
+#gesture-label {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0,0,0,0.65);
+  padding: 5px 10px;
+  border-radius: 4px;
+  border-left: 3px solid var(--orange);
+  font-size: 0.78rem;
+  color: var(--gold);
+  z-index: 3;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+
+#jutsu-announce {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Bangers', cursive;
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  color: #fff;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 6;
+  text-shadow: 0 0 30px currentColor, 0 2px 4px rgba(0,0,0,0.8);
+  transition: opacity 0.3s;
+  white-space: nowrap;
+}
+
+#jutsu-announce.show { opacity: 1; }
+#jutsu-announce small {
+  display: block;
+  font-size: 0.45em;
+  opacity: 0.8;
+  letter-spacing: 4px;
+}
+
+#charge-track {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  height: 5px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  display: none;
+  z-index: 3;
+}
+
+#charge-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  transition: background 0.2s;
+  box-shadow: 0 0 8px var(--orange);
+}
+
+/* ─── Side panel ─── */
+#side-panel {
+  width: 210px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+#side-panel h2 {
+  font-family: 'Bangers', cursive;
+  font-size: 1.1rem;
+  color: var(--orange);
+  letter-spacing: 3px;
+  text-align: center;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(255,107,0,0.25);
+}
+
+.jcard {
+  background: rgba(255,107,0,0.04);
+  border: 1px solid rgba(255,107,0,0.15);
+  border-radius: 6px;
+  padding: 0.55rem 0.75rem;
+  transition: all 0.25s;
+  cursor: default;
+}
+
+.jcard.charging {
+  border-color: rgba(255,184,0,0.5);
+  background: rgba(255,184,0,0.07);
+}
+
+.jcard.fired {
+  border-color: var(--gold);
+  background: rgba(255,184,0,0.14);
+  box-shadow: 0 0 12px rgba(255,184,0,0.2);
+}
+
+.jcard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.jcard-name {
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: var(--gold);
+  line-height: 1.2;
+}
+
+.jcard-kanji {
+  font-size: 0.65rem;
+  color: rgba(240,222,180,0.45);
+  margin-top: 1px;
+}
+
+.jcard-emoji {
+  font-size: 1.4rem;
+  line-height: 1;
+  margin-top: -2px;
+}
+
+.jcard-seal {
+  font-size: 0.62rem;
+  color: var(--orange);
+  opacity: 0.7;
+  margin-top: 3px;
+  font-style: italic;
+}
+
+.jcard-desc {
+  font-size: 0.67rem;
+  color: rgba(240,222,180,0.5);
+  margin-top: 2px;
+}
+
+#sound-btn, #music-btn {
+  background: transparent;
+  border: 1px solid rgba(255,107,0,0.25);
+  color: var(--gold);
+  padding: 0.45rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  text-align: center;
+  transition: all 0.2s;
+  margin-top: 0.2rem;
+}
+#sound-btn:hover, #music-btn:hover {
+  border-color: var(--orange);
+  background: rgba(255,107,0,0.1);
+}
+#music-btn.playing {
+  border-color: var(--orange);
+  background: rgba(255,107,0,0.12);
+  color: var(--orange);
+}
+
+#tip {
+  font-size: 0.65rem;
+  color: rgba(240,222,180,0.35);
+  text-align: center;
+  line-height: 1.5;
+  padding-top: 0.2rem;
+}
+
+@media (max-width: 680px) {
+  main { flex-direction: column; }
+  #side-panel { width: 100%; flex-direction: row; flex-wrap: wrap; }
+  #side-panel h2, #sound-btn, #music-btn, #tip { width: 100%; }
+  .jcard { flex: 1; min-width: 130px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🍃 NARUTO JUTSU CAM</h1>
+  <a href="/" class="back-link">← Back</a>
+</header>
+
+<main>
+  <div id="camera-wrap">
+    <video id="video" playsinline muted></video>
+    <canvas id="output-canvas" width="640" height="480"></canvas>
+
+    <div id="permission-overlay">
+      <div style="font-size:3.5rem">🍃</div>
+      <h2>NARUTO JUTSU CAM</h2>
+      <p>Make hand signs in front of your camera. Hold each sign for 1-2 seconds to cast jutsu!</p>
+      <button class="btn" id="start-btn">ACTIVATE CAMERA</button>
+      <span id="cam-err" style="color:#f87171;font-size:0.8rem;display:none"></span>
+    </div>
+
+    <div id="gesture-label">No hand detected</div>
+    <div id="jutsu-announce"></div>
+    <div id="charge-track"><div id="charge-fill"></div></div>
+  </div>
+
+  <aside id="side-panel">
+    <h2>JUTSU GUIDE</h2>
+    <div id="jcards"></div>
+    <button id="music-btn">🎵 Music: OFF</button>
+    <button id="sound-btn">🔊 Sound: ON</button>
+    <div id="tip">Hold each sign for 1–2 sec to activate<br>Double-click music to switch tracks</div>
+  </aside>
+</main>
+
+<!-- MediaPipe Hands -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+<script>
+// ════════════════════════════════════════════════
+// JUTSU DEFINITIONS
+// ════════════════════════════════════════════════
+const JUTSU = [
+  {
+    id: 'shadowclone',
+    name: 'Shadow Clone Jutsu',
+    kanji: '影分身の術',
+    gesture: 'peace',
+    seal: 'Clone Seal — 十字印',
+    emoji: '✌️',
+    desc: 'Cross fingers (index + middle up)',
+    color: '#FFB800',
+    chargeMs: 1500,
+    durationMs: 4200,
+    voiceUrl: 'https://soundboardguy.com/wp-content/uploads/2021/07/kage-bunshin-no-jutsu-naruto.mp3',
+  },
+  {
+    id: 'rasengan',
+    name: 'Rasengan',
+    kanji: '螺旋丸',
+    gesture: 'open',
+    seal: 'No seal — pure chakra',
+    emoji: '🖐️',
+    desc: 'Open palm — focus your chakra',
+    color: '#00BFFF',
+    chargeMs: 2000,
+    durationMs: 3800,
+    voiceUrl: 'https://archive.org/download/RasenganSoundEffect_20170611/Rasengan-Sound-Effect.mp3',
+  },
+  {
+    id: 'chidori',
+    name: 'Chidori',
+    kanji: '千鳥',
+    gesture: 'fist',
+    seal: 'Ox → Hare → Monkey',
+    emoji: '✊',
+    desc: 'Clench fist — charge lightning',
+    color: '#7DF9FF',
+    chargeMs: 2000,
+    durationMs: 3200,
+    voiceUrl: 'https://soundboardguy.com/wp-content/uploads/2021/07/chidori-sound-1.mp3',
+  },
+  {
+    id: 'fireball',
+    name: 'Fire Style: Fireball',
+    kanji: '火遁・豪火球の術',
+    gesture: 'point',
+    seal: 'Tiger Seal — 寅',
+    emoji: '☝️',
+    desc: 'Tiger seal (extend index finger)',
+    color: '#FF6030',
+    chargeMs: 1500,
+    durationMs: 3200,
+    voiceUrl: 'https://soundboardguy.com/wp-content/uploads/2022/07/katon_aoszcAp.mp3',
+  },
+  {
+    id: 'summoning',
+    name: 'Summoning Jutsu',
+    kanji: '口寄せの術',
+    gesture: 'horns',
+    seal: 'Boar → Dog → Bird → Monkey → Ram',
+    emoji: '🤘',
+    desc: 'Slam hand (index + pinky up)',
+    color: '#A78BFA',
+    chargeMs: 2000,
+    durationMs: 4000,
+    voiceUrl: 'https://soundboardguy.com/wp-content/uploads/2021/07/smoke-clone-naruto.mp3',
+  },
+];
+
+// ════════════════════════════════════════════════
+// PRELOAD VOICE CLIPS
+// ════════════════════════════════════════════════
+const voiceClips = {};
+JUTSU.forEach(j => {
+  if (j.voiceUrl) {
+    const audio = new Audio();
+    audio.crossOrigin = 'anonymous';
+    audio.preload = 'auto';
+    audio.src = j.voiceUrl;
+    audio.volume = 0.7;
+    voiceClips[j.id] = audio;
+  }
+});
+
+// ════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════
+let soundOn = true;
+let audioCtx = null;
+let currentGesture = 'none';
+let chargeStart = null;
+let activeEffect = null;
+let lastFrame = null;      // offscreen canvas for clone effect
+let fireParticles = [];
+let smokeParticles = [];
+let spinAngle = 0;
+
+const videoEl  = document.getElementById('video');
+const canvasEl = document.getElementById('output-canvas');
+const ctx      = canvasEl.getContext('2d');
+
+// ════════════════════════════════════════════════
+// BUILD JUTSU CARDS
+// ════════════════════════════════════════════════
+const cardsContainer = document.getElementById('jcards');
+JUTSU.forEach(j => {
+  const el = document.createElement('div');
+  el.className = 'jcard';
+  el.id = 'card-' + j.id;
+  el.innerHTML = `
+    <div class="jcard-header">
+      <div>
+        <div class="jcard-name">${j.name}</div>
+        <div class="jcard-kanji">${j.kanji}</div>
+      </div>
+      <div class="jcard-emoji">${j.emoji}</div>
+    </div>
+    <div class="jcard-seal">${j.seal}</div>
+    <div class="jcard-desc">${j.desc}</div>
+  `;
+  cardsContainer.appendChild(el);
+});
+
+document.getElementById('sound-btn').addEventListener('click', () => {
+  soundOn = !soundOn;
+  document.getElementById('sound-btn').textContent = soundOn ? '🔊 Sound: ON' : '🔇 Sound: OFF';
+});
+
+// ════════════════════════════════════════════════
+// CAMERA START
+// ════════════════════════════════════════════════
+document.getElementById('start-btn').addEventListener('click', startCamera);
+
+function startCamera() {
+  lastFrame = document.createElement('canvas');
+
+  const hands = new Hands({
+    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+  });
+  hands.setOptions({
+    maxNumHands: 2,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.72,
+    minTrackingConfidence: 0.55,
+  });
+  hands.onResults(onResults);
+
+  const cam = new Camera(videoEl, {
+    onFrame: async () => { await hands.send({ image: videoEl }); },
+    width: 640, height: 480,
+  });
+
+  cam.start().then(() => {
+    document.getElementById('permission-overlay').style.display = 'none';
+    // Auto-start background music on camera activation (first user interaction)
+    if (!musicPlaying) startMusic();
+  }).catch(err => {
+    const errEl = document.getElementById('cam-err');
+    errEl.style.display = '';
+    errEl.textContent = 'Camera access denied — please allow it and refresh.';
+    console.error(err);
+  });
+}
+
+// ════════════════════════════════════════════════
+// MAIN RENDER
+// ════════════════════════════════════════════════
+function onResults(results) {
+  const W = canvasEl.width;
+  const H = canvasEl.height;
+
+  // 1. Capture mirrored frame for clone effect
+  lastFrame.width = W;
+  lastFrame.height = H;
+  const lfx = lastFrame.getContext('2d');
+  lfx.save();
+  lfx.scale(-1, 1);
+  lfx.translate(-W, 0);
+  lfx.drawImage(results.image, 0, 0, W, H);
+  lfx.restore();
+
+  ctx.clearRect(0, 0, W, H);
+
+  // 2. Draw main video (mirrored), dimmed during shadow clone
+  ctx.save();
+  if (activeEffect && activeEffect.id === 'shadowclone') ctx.globalAlpha = 0.82;
+  ctx.scale(-1, 1);
+  ctx.translate(-W, 0);
+  ctx.drawImage(results.image, 0, 0, W, H);
+  ctx.restore();
+
+  // 3. Draw hand skeleton
+  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+    const effColor = activeEffect ? activeEffect.color : 'rgba(255,107,0,0.85)';
+    for (const lm of results.multiHandLandmarks) {
+      const mlm = lm.map(p => ({ ...p, x: 1 - p.x }));
+      drawConnectors(ctx, mlm, HAND_CONNECTIONS, { color: effColor, lineWidth: 2 });
+      drawLandmarks(ctx, mlm, { color: '#FFB800', fillColor: effColor, radius: 3, lineWidth: 1 });
+    }
+  }
+
+  // 4. Gesture detection + charge
+  const g = detectGesture(results.multiHandLandmarks);
+  handleGesture(g, results.multiHandLandmarks, W, H);
+
+  // 5. Render active effect
+  if (activeEffect) {
+    spinAngle += 0.1;
+    const elapsed = (Date.now() - activeEffect.startTime) / 1000;
+    const t = elapsed / (activeEffect.durationMs / 1000);
+    if (t >= 1) {
+      endEffect();
+    } else {
+      renderEffect(activeEffect.id, W, H, t, results.multiHandLandmarks);
+    }
+  }
+}
+
+// ════════════════════════════════════════════════
+// GESTURE DETECTION
+// ════════════════════════════════════════════════
+function fingerUp(lm, tip, pip) { return lm[tip].y < lm[pip].y; }
+
+function detectGesture(handsData) {
+  if (!handsData || handsData.length === 0) return 'none';
+  const lm = handsData[0];
+  const idx = fingerUp(lm, 8, 6);
+  const mid = fingerUp(lm, 12, 10);
+  const rng = fingerUp(lm, 16, 14);
+  const pnk = fingerUp(lm, 20, 18);
+  const n = [idx, mid, rng, pnk].filter(Boolean).length;
+  if (idx && mid && !rng && !pnk) return 'peace';
+  if (n === 4) return 'open';
+  if (n === 0) return 'fist';
+  if (idx && !mid && !rng && !pnk) return 'point';
+  if (idx && !mid && !rng && pnk) return 'horns';
+  return 'none';
+}
+
+function handleGesture(g, handsData, W, H) {
+  // Label
+  const labels = {
+    none: 'No hand detected',
+    peace: '✌️  十字印 Clone Seal — Shadow Clone',
+    open:  '🖐️  Chakra Focus — Rasengan',
+    fist:  '✊  丑卯申 Ox·Hare·Monkey — Chidori',
+    point: '☝️  寅 Tiger Seal — Fire Style',
+    horns: '🤘  亥戌酉申未 Summoning Seals',
+  };
+  document.getElementById('gesture-label').textContent = labels[g] || g;
+
+  if (g !== currentGesture) {
+    currentGesture = g;
+    chargeStart = g !== 'none' ? Date.now() : null;
+    document.getElementById('charge-track').style.display = g !== 'none' ? 'block' : 'none';
+    document.getElementById('charge-fill').style.width = '0%';
+    document.querySelectorAll('.jcard').forEach(c => c.classList.remove('charging'));
+    const j = JUTSU.find(x => x.gesture === g);
+    if (j) document.getElementById('card-' + j.id).classList.add('charging');
+  }
+
+  if (chargeStart && g !== 'none') {
+    const j = JUTSU.find(x => x.gesture === g);
+    if (j) {
+      const prog = Math.min((Date.now() - chargeStart) / j.chargeMs, 1);
+      const fill = document.getElementById('charge-fill');
+      fill.style.width = (prog * 100) + '%';
+      fill.style.background = `linear-gradient(90deg, ${j.color}, #fff)`;
+      fill.style.boxShadow = `0 0 10px ${j.color}`;
+      if (prog >= 1) {
+        fireJutsu(j, handsData, W, H);
+        chargeStart = null;
+        document.getElementById('charge-track').style.display = 'none';
+        fill.style.width = '0%';
+      }
+    }
+  }
+}
+
+// ════════════════════════════════════════════════
+// FIRE JUTSU
+// ════════════════════════════════════════════════
+function fireJutsu(j, handsData, W, H) {
+  fireParticles = [];
+  smokeParticles = [];
+
+  activeEffect = {
+    id: j.id,
+    color: j.color,
+    startTime: Date.now(),
+    durationMs: j.durationMs,
+  };
+
+  // Highlight card
+  document.querySelectorAll('.jcard').forEach(c => c.classList.remove('fired','charging'));
+  document.getElementById('card-' + j.id).classList.add('fired');
+  setTimeout(() => document.getElementById('card-' + j.id).classList.remove('fired'), j.durationMs);
+
+  // Announce
+  const ann = document.getElementById('jutsu-announce');
+  ann.style.color = j.color;
+  ann.style.textShadow = `0 0 25px ${j.color}`;
+  ann.innerHTML = j.name + `<small>${j.kanji}</small>`;
+  ann.classList.add('show');
+  setTimeout(() => ann.classList.remove('show'), 1800);
+
+  if (soundOn) {
+    // Duck the background music so the voice clip is clear
+    if (bgAudio && musicPlaying) {
+      bgAudio.volume = 0.1;
+      setTimeout(() => { if (bgAudio) bgAudio.volume = 0.35; }, 2500);
+    }
+    // Play the anime voice clip (character saying the jutsu name)
+    const clip = voiceClips[j.id];
+    if (clip) {
+      clip.currentTime = 0;
+      clip.play().catch(() => {});
+    }
+    // Play the synthesized SFX layered on top
+    playSound(j.id);
+  }
+}
+
+function endEffect() {
+  activeEffect = null;
+  fireParticles = [];
+  smokeParticles = [];
+}
+
+// ════════════════════════════════════════════════
+// EFFECTS
+// ════════════════════════════════════════════════
+function renderEffect(id, W, H, t, handsData) {
+  switch (id) {
+    case 'shadowclone': fxShadowClone(W, H, t); break;
+    case 'rasengan':    fxRasengan(W, H, t, handsData); break;
+    case 'chidori':     fxChidori(W, H, t, handsData); break;
+    case 'fireball':    fxFireball(W, H, t, handsData); break;
+    case 'summoning':   fxSummoning(W, H, t); break;
+  }
+}
+
+// ── Shadow Clone ──────────────────────────────
+function fxShadowClone(W, H, t) {
+  if (!lastFrame) return;
+
+  // Activation flash
+  if (t < 0.08) {
+    const a = (0.08 - t) / 0.08;
+    ctx.save();
+    ctx.fillStyle = `rgba(255,184,0,${a * 0.65})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  const alpha = Math.sin(t * Math.PI) * 0.78;
+  const positions = [
+    { cx: 0.13, cy: 0.5,  s: 0.37 },
+    { cx: 0.87, cy: 0.5,  s: 0.37 },
+    { cx: 0.5,  cy: 0.14, s: 0.32 },
+    { cx: 0.5,  cy: 0.86, s: 0.32 },
+  ];
+
+  for (const p of positions) {
+    const cw = W * p.s, ch = H * p.s;
+    const cx = p.cx * W - cw / 2, cy = p.cy * H - ch / 2;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(lastFrame, cx, cy, cw, ch);
+    // Orange tint
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = 'rgba(255,100,0,0.28)';
+    ctx.fillRect(cx, cy, cw, ch);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = `rgba(255,184,0,${alpha * 0.9})`;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(cx, cy, cw, ch);
+    ctx.restore();
+  }
+
+  // Floating kanji
+  ctx.save();
+  ctx.globalAlpha = Math.sin(t * Math.PI) * 0.9;
+  ctx.font = `bold ${Math.round(W * 0.07)}px serif`;
+  ctx.fillStyle = '#FFB800';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = '#FFB800';
+  ctx.shadowBlur = 18;
+  ctx.fillText('影分身の術', W / 2, H - 16);
+  ctx.restore();
+}
+
+// ── Rasengan ──────────────────────────────────
+function fxRasengan(W, H, t, handsData) {
+  let px = W / 2, py = H / 2;
+  if (handsData && handsData.length > 0) {
+    const lm = handsData[0];
+    const pts = [0, 5, 9, 13, 17];
+    let sx = 0, sy = 0;
+    pts.forEach(i => { sx += (1 - lm[i].x) * W; sy += lm[i].y * H; });
+    px = sx / pts.length;
+    py = sy / pts.length;
+  }
+
+  const fade = t < 0.85 ? 1 : (1 - t) / 0.15;
+  const r = 55 + Math.sin(t * 18) * 7;
+
+  ctx.save();
+  ctx.globalAlpha = fade;
+  ctx.translate(px, py);
+
+  // Glow halo
+  const grd = ctx.createRadialGradient(0, 0, 0, 0, 0, r + 45);
+  grd.addColorStop(0,   'rgba(0,220,255,0.85)');
+  grd.addColorStop(0.45,'rgba(0,120,255,0.45)');
+  grd.addColorStop(1,   'rgba(0, 40,200,0)');
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.arc(0, 0, r + 45, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Spiral arms
+  for (let arm = 0; arm < 4; arm++) {
+    ctx.save();
+    ctx.rotate(spinAngle + arm * Math.PI / 2);
+    ctx.strokeStyle = 'rgba(210,245,255,0.9)';
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = '#00BFFF';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    for (let rad = 4; rad < r; rad += 1) {
+      const a = rad * 0.19;
+      const x = rad * Math.cos(a), y = rad * Math.sin(a);
+      rad === 4 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // White core
+  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, 16);
+  core.addColorStop(0, 'rgba(255,255,255,1)');
+  core.addColorStop(1, 'rgba(0,191,255,0)');
+  ctx.fillStyle = core;
+  ctx.beginPath();
+  ctx.arc(0, 0, 16, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// ── Chidori ───────────────────────────────────
+function fxChidori(W, H, t, handsData) {
+  const fade = t < 0.82 ? 0.7 + Math.random() * 0.3 : (1 - t) / 0.18;
+
+  // Find hand center (fist position)
+  let cx = W / 2, cy = H / 2;
+  if (handsData && handsData.length > 0) {
+    const lm = handsData[0];
+    const pts = [0, 5, 9, 13, 17];
+    let sx = 0, sy = 0;
+    pts.forEach(i => { sx += (1 - lm[i].x) * W; sy += lm[i].y * H; });
+    cx = sx / pts.length;
+    cy = sy / pts.length;
+  }
+
+  // Blue screen tint flicker
+  ctx.save();
+  ctx.fillStyle = `rgba(80,190,255,${(0.06 + Math.random() * 0.08) * fade})`;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = fade;
+  ctx.strokeStyle = 'rgba(140,230,255,0.92)';
+  ctx.shadowColor = '#7DF9FF';
+  ctx.shadowBlur = 22;
+
+  // Lightning bolts radiating from hand
+  for (let i = 0; i < 12; i++) {
+    if (Math.random() < 0.35) continue;
+    const angle = (i / 12) * Math.PI * 2 + spinAngle * 0.08;
+    const len = 60 + Math.random() * 140;
+    ctx.lineWidth = Math.random() < 0.18 ? 3 : 1.5;
+    lightning(ctx, cx, cy, cx + Math.cos(angle) * len, cy + Math.sin(angle) * len, 7);
+  }
+
+  // Crackling arc from hand toward arm (upward)
+  for (let i = 0; i < 4; i++) {
+    const angle = -Math.PI/2 + (Math.random() - 0.5) * 1.2;
+    const len = 40 + Math.random() * 80;
+    ctx.lineWidth = 2;
+    lightning(ctx, cx, cy, cx + Math.cos(angle) * len, cy + Math.sin(angle) * len, 5);
+  }
+
+  // Bright orb on the fist
+  const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, 36);
+  core.addColorStop(0, 'rgba(255,255,255,0.95)');
+  core.addColorStop(0.35,'rgba(140,230,255,0.7)');
+  core.addColorStop(0.7, 'rgba(70,160,255,0.3)');
+  core.addColorStop(1, 'rgba(0,100,255,0)');
+  ctx.fillStyle = core;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 36, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Secondary smaller sparks near the hand
+  ctx.globalAlpha = fade * 0.6;
+  for (let i = 0; i < 6; i++) {
+    const sparkAngle = Math.random() * Math.PI * 2;
+    const sparkDist = 15 + Math.random() * 25;
+    const sx = cx + Math.cos(sparkAngle) * sparkDist;
+    const sy = cy + Math.sin(sparkAngle) * sparkDist;
+    ctx.fillStyle = `rgba(200,240,255,${0.5 + Math.random() * 0.5})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 1.5 + Math.random() * 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function lightning(ctx, x1, y1, x2, y2, segs) {
+  const pts = [{ x: x1, y: y1 }];
+  for (let i = 1; i < segs; i++) {
+    const f = i / segs, spread = 28 * (1 - Math.abs(f - 0.5) * 2);
+    pts.push({
+      x: x1 + (x2 - x1) * f + (Math.random() - 0.5) * spread * 2,
+      y: y1 + (y2 - y1) * f + (Math.random() - 0.5) * spread * 2,
+    });
+  }
+  pts.push({ x: x2, y: y2 });
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.stroke();
+}
+
+// ── Fireball ──────────────────────────────────
+function fxFireball(W, H, t, handsData) {
+  let spawnX = W / 2, spawnY = H * 0.4;
+  if (handsData && handsData.length > 0) {
+    const lm = handsData[0];
+    spawnX = (1 - lm[8].x) * W;
+    spawnY = lm[8].y * H;
+  }
+
+  // Spawn particles
+  const count = Math.floor(6 + Math.random() * 9);
+  for (let i = 0; i < count; i++) {
+    const ang = -Math.PI / 2 + (Math.random() - 0.5) * 1.2;
+    const spd = 2.5 + Math.random() * 6;
+    fireParticles.push({
+      x: spawnX + (Math.random() - 0.5) * 18,
+      y: spawnY,
+      vx: Math.cos(ang) * spd + (Math.random() - 0.5) * 2,
+      vy: Math.sin(ang) * spd - Math.random() * 1.5,
+      life: 1.0,
+      size: 9 + Math.random() * 22,
+      spark: Math.random() < 0.28,
+    });
+  }
+
+  ctx.save();
+  for (let i = fireParticles.length - 1; i >= 0; i--) {
+    const p = fireParticles[i];
+    p.x  += p.vx;
+    p.y  += p.vy;
+    p.vy -= 0.18;
+    p.vx *= 0.97;
+    p.life -= p.spark ? 0.045 : 0.028;
+    p.size *= 0.968;
+
+    if (p.life <= 0 || p.size < 1) { fireParticles.splice(i, 1); continue; }
+
+    ctx.globalAlpha = p.life * 0.82;
+    if (p.spark) {
+      ctx.fillStyle = '#FFE566';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = `rgb(255,${Math.floor(p.life * 165)},0)`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  // Radial glow at fingertip
+  const glow = ctx.createRadialGradient(spawnX, spawnY, 0, spawnX, spawnY, 100);
+  glow.addColorStop(0, 'rgba(255,100,0,0.18)');
+  glow.addColorStop(1, 'rgba(255,50,0,0)');
+  ctx.save();
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+}
+
+// ── Summoning ─────────────────────────────────
+function fxSummoning(W, H, t) {
+  // Flash
+  if (t < 0.06) {
+    ctx.save();
+    ctx.fillStyle = `rgba(139,92,246,${(0.06 - t) / 0.06 * 0.75})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  // Summoning circle
+  if (t < 0.45) {
+    const a = t < 0.2 ? t / 0.2 : (0.45 - t) / 0.25;
+    summoningCircle(W, H, a, t);
+  }
+
+  // Smoke particles
+  if (t < 0.65) {
+    for (let i = 0; i < 4; i++) {
+      smokeParticles.push({
+        x: W/2 + (Math.random()-0.5)*200,
+        y: H * 0.72 + (Math.random()-0.5)*90,
+        vx: (Math.random()-0.5)*1.8,
+        vy: -Math.random()*2.5 - 0.8,
+        life: 1.0,
+        size: 22 + Math.random()*38,
+        hue: 268 + Math.random()*30,
+      });
+    }
+  }
+
+  ctx.save();
+  for (let i = smokeParticles.length - 1; i >= 0; i--) {
+    const p = smokeParticles[i];
+    p.x += p.vx; p.y += p.vy; p.life -= 0.014; p.size += 0.45;
+    if (p.life <= 0) { smokeParticles.splice(i, 1); continue; }
+    ctx.globalAlpha = p.life * 0.38;
+    const sg = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.size);
+    sg.addColorStop(0, `hsla(${p.hue},60%,62%,0.9)`);
+    sg.addColorStop(1, `hsla(${p.hue},60%,42%,0)`);
+    ctx.fillStyle = sg;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Boss toad silhouette
+  if (t > 0.32 && t < 0.82) {
+    toadSilhouette(W, H, Math.sin((t - 0.32) / 0.5 * Math.PI));
+  }
+}
+
+function summoningCircle(W, H, alpha, t) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(W/2, H * 0.68);
+  ctx.rotate(t * 4.5);
+  const r = 115;
+  ctx.strokeStyle = '#A78BFA';
+  ctx.lineWidth = 1.8;
+  ctx.shadowColor = '#A78BFA';
+  ctx.shadowBlur = 16;
+  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0,0,r*0.68,0,Math.PI*2); ctx.stroke();
+  for (let i = 0; i < 5; i++) {
+    const a  = (i/5)*Math.PI*2 - Math.PI/2;
+    const a2 = ((i+2)/5)*Math.PI*2 - Math.PI/2;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*r, Math.sin(a)*r);
+    ctx.lineTo(Math.cos(a2)*r, Math.sin(a2)*r);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#C4B5FD';
+  ctx.font = `bold 15px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('口寄せ', 0, 0);
+  ctx.restore();
+}
+
+function toadSilhouette(W, H, alpha) {
+  ctx.save();
+  const cx = W / 2, cy = H * 0.40;
+  const scale = Math.min(W, H) / 480;
+
+  // === Body (wide squat toad shape) ===
+  ctx.globalAlpha = alpha * 0.7;
+  // Back legs (behind body)
+  ctx.fillStyle = '#2D1A4E';
+  ctx.beginPath();
+  ctx.ellipse(cx - 80*scale, cy + 55*scale, 45*scale, 28*scale, -0.3, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + 80*scale, cy + 55*scale, 45*scale, 28*scale, 0.3, 0, Math.PI*2);
+  ctx.fill();
+
+  // Main body — big round belly
+  ctx.fillStyle = '#3B1D6E';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 10*scale, 110*scale, 80*scale, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Belly (lighter underside)
+  ctx.fillStyle = '#5B3A8E';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 30*scale, 70*scale, 50*scale, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // === Vest/jacket (Gamabunta's happi coat) ===
+  ctx.globalAlpha = alpha * 0.6;
+  ctx.fillStyle = '#1E3A5F';
+  ctx.beginPath();
+  ctx.moveTo(cx - 85*scale, cy - 30*scale);
+  ctx.lineTo(cx - 100*scale, cy + 50*scale);
+  ctx.lineTo(cx - 40*scale, cy + 60*scale);
+  ctx.lineTo(cx - 30*scale, cy - 40*scale);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx + 85*scale, cy - 30*scale);
+  ctx.lineTo(cx + 100*scale, cy + 50*scale);
+  ctx.lineTo(cx + 40*scale, cy + 60*scale);
+  ctx.lineTo(cx + 30*scale, cy - 40*scale);
+  ctx.closePath();
+  ctx.fill();
+
+  // === Head ===
+  ctx.globalAlpha = alpha * 0.72;
+  ctx.fillStyle = '#3B1D6E';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - 55*scale, 72*scale, 50*scale, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Wide mouth line
+  ctx.strokeStyle = '#1A0A30';
+  ctx.lineWidth = 3*scale;
+  ctx.globalAlpha = alpha * 0.5;
+  ctx.beginPath();
+  ctx.moveTo(cx - 55*scale, cy - 38*scale);
+  ctx.quadraticCurveTo(cx, cy - 28*scale, cx + 55*scale, cy - 38*scale);
+  ctx.stroke();
+
+  // === Protruding eyes (on top of head, toad-style) ===
+  ctx.globalAlpha = alpha * 0.8;
+  // Eye sockets (bumps)
+  ctx.fillStyle = '#4A2580';
+  ctx.beginPath();
+  ctx.ellipse(cx - 32*scale, cy - 95*scale, 22*scale, 20*scale, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + 32*scale, cy - 95*scale, 22*scale, 20*scale, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Eyeballs (yellow with slit pupils like Gamabunta)
+  ctx.fillStyle = '#E8C020';
+  ctx.beginPath();
+  ctx.ellipse(cx - 32*scale, cy - 96*scale, 14*scale, 13*scale, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + 32*scale, cy - 96*scale, 14*scale, 13*scale, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Slit pupils
+  ctx.fillStyle = '#1A0A30';
+  ctx.beginPath();
+  ctx.ellipse(cx - 32*scale, cy - 96*scale, 4*scale, 11*scale, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + 32*scale, cy - 96*scale, 4*scale, 11*scale, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // === Pipe (kiseru — Gamabunta's signature) ===
+  ctx.globalAlpha = alpha * 0.65;
+  ctx.strokeStyle = '#8B6914';
+  ctx.lineWidth = 4*scale;
+  ctx.beginPath();
+  ctx.moveTo(cx + 50*scale, cy - 42*scale);
+  ctx.lineTo(cx + 100*scale, cy - 70*scale);
+  ctx.stroke();
+  // Pipe bowl
+  ctx.fillStyle = '#6B4F10';
+  ctx.beginPath();
+  ctx.ellipse(cx + 103*scale, cy - 74*scale, 8*scale, 10*scale, 0.3, 0, Math.PI*2);
+  ctx.fill();
+  // Smoke wisps from pipe
+  ctx.globalAlpha = alpha * 0.25;
+  ctx.fillStyle = '#C4B5FD';
+  for (let i = 0; i < 3; i++) {
+    const sx = cx + 105*scale + i*8*scale;
+    const sy = cy - 85*scale - i*12*scale;
+    ctx.beginPath();
+    ctx.arc(sx + Math.sin(spinAngle + i)*5, sy, (5 + i*3)*scale, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // === Front arms/legs ===
+  ctx.globalAlpha = alpha * 0.6;
+  ctx.fillStyle = '#3B1D6E';
+  ctx.beginPath();
+  ctx.ellipse(cx - 95*scale, cy + 20*scale, 22*scale, 35*scale, 0.4, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + 95*scale, cy + 20*scale, 22*scale, 35*scale, -0.4, 0, Math.PI*2);
+  ctx.fill();
+
+  // === Scar on face (Gamabunta has scars) ===
+  ctx.globalAlpha = alpha * 0.35;
+  ctx.strokeStyle = '#6B3FA0';
+  ctx.lineWidth = 2*scale;
+  ctx.beginPath();
+  ctx.moveTo(cx - 15*scale, cy - 70*scale);
+  ctx.lineTo(cx - 5*scale, cy - 50*scale);
+  ctx.stroke();
+
+  // === Label ===
+  ctx.globalAlpha = alpha * 0.85;
+  ctx.fillStyle = '#C4B5FD';
+  ctx.font = `bold ${Math.round(16*scale)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.shadowColor = '#7C3AED';
+  ctx.shadowBlur = 12;
+  ctx.fillText('ガマブン太', cx, cy + 95*scale);
+  ctx.font = `${Math.round(11*scale)}px sans-serif`;
+  ctx.globalAlpha = alpha * 0.55;
+  ctx.fillText('Gamabunta — Chief Toad', cx, cy + 112*scale);
+
+  ctx.restore();
+}
+
+// ════════════════════════════════════════════════
+// SOUND SYNTHESIS (Web Audio API)
+// ════════════════════════════════════════════════
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function noise(duration) {
+  const buf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * duration), audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random()*2-1;
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  return src;
+}
+
+function playSound(id) {
+  initAudio();
+  const now = audioCtx.currentTime;
+
+  if (id === 'shadowclone') {
+    // Whoosh sweep
+    const n = noise(0.65); const f = audioCtx.createBiquadFilter();
+    f.type = 'bandpass'; f.Q.value = 2;
+    f.frequency.setValueAtTime(280, now);
+    f.frequency.exponentialRampToValueAtTime(1600, now+0.35);
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.55, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now+0.65);
+    n.connect(f); f.connect(g); g.connect(audioCtx.destination); n.start(now);
+    // 4 pop clones
+    for (let i = 0; i < 4; i++) {
+      const pn = noise(0.18); const pf = audioCtx.createBiquadFilter();
+      pf.type = 'bandpass'; pf.frequency.value = 580 + i*140;
+      const pg = audioCtx.createGain(); const d = 0.12 + i*0.08;
+      pg.gain.setValueAtTime(0.32, now+d);
+      pg.gain.exponentialRampToValueAtTime(0.001, now+d+0.18);
+      pn.connect(pf); pf.connect(pg); pg.connect(audioCtx.destination); pn.start(now+d);
+    }
+  }
+
+  else if (id === 'rasengan') {
+    // Spinning whir
+    const osc = audioCtx.createOscillator(); osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(140, now);
+    osc.frequency.exponentialRampToValueAtTime(520, now+1.2);
+    osc.frequency.exponentialRampToValueAtTime(280, now+3);
+    const lfo = audioCtx.createOscillator(); lfo.frequency.value = 14;
+    const lg = audioCtx.createGain(); lg.gain.value = 70;
+    lfo.connect(lg); lg.connect(osc.frequency);
+    const ws = audioCtx.createWaveShaper();
+    const cv = new Float32Array(512);
+    for (let i=0; i<512; i++) { const x=(i*2)/512-1; cv[i]=(3+60)*x*20/(Math.PI+60*Math.abs(x)); }
+    ws.curve = cv;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.18, now+0.25);
+    g.gain.linearRampToValueAtTime(0.18, now+2.2); g.gain.exponentialRampToValueAtTime(0.001, now+3.5);
+    osc.connect(ws); ws.connect(g); g.connect(audioCtx.destination);
+    osc.start(now); lfo.start(now); osc.stop(now+3.6); lfo.stop(now+3.6);
+  }
+
+  else if (id === 'chidori') {
+    // High crackle + chirps
+    const n = noise(2.8); const f = audioCtx.createBiquadFilter();
+    f.type = 'highpass'; f.frequency.value = 3200;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.38, now); g.gain.exponentialRampToValueAtTime(0.001, now+2.5);
+    n.connect(f); f.connect(g); g.connect(audioCtx.destination); n.start(now);
+    // Bird chirps
+    const o = audioCtx.createOscillator(); o.type = 'square';
+    const cg = audioCtx.createGain(); cg.gain.setValueAtTime(0, now);
+    for (let i=0; i<14; i++) {
+      const t2 = now+0.08+i*0.1;
+      o.frequency.setValueAtTime(1700+Math.random()*750, t2);
+      cg.gain.setValueAtTime(0.07, t2); cg.gain.exponentialRampToValueAtTime(0.001, t2+0.085);
+    }
+    o.connect(cg); cg.connect(audioCtx.destination); o.start(now+0.08); o.stop(now+2.2);
+  }
+
+  else if (id === 'fireball') {
+    // Deep whomp + crackle
+    const n = noise(2.2); const f = audioCtx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(70, now);
+    f.frequency.exponentialRampToValueAtTime(500, now+0.45);
+    f.frequency.exponentialRampToValueAtTime(180, now+2);
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.9, now+0.08);
+    g.gain.exponentialRampToValueAtTime(0.001, now+2.2);
+    n.connect(f); f.connect(g); g.connect(audioCtx.destination); n.start(now);
+    const n2 = noise(1.4); const f2 = audioCtx.createBiquadFilter();
+    f2.type = 'bandpass'; f2.frequency.value = 900; f2.Q.value = 4;
+    const g2 = audioCtx.createGain();
+    g2.gain.setValueAtTime(0.28, now); g2.gain.exponentialRampToValueAtTime(0.001, now+1.4);
+    n2.connect(f2); f2.connect(g2); g2.connect(audioCtx.destination); n2.start(now);
+  }
+
+  else if (id === 'summoning') {
+    // Deep boom
+    const o = audioCtx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(95, now); o.frequency.exponentialRampToValueAtTime(28, now+0.9);
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(1.0, now); g.gain.exponentialRampToValueAtTime(0.001, now+1.2);
+    o.connect(g); g.connect(audioCtx.destination); o.start(now); o.stop(now+1.2);
+    // Puff
+    const n = noise(0.4); const f = audioCtx.createBiquadFilter();
+    f.type = 'bandpass'; f.frequency.value = 420;
+    const ng = audioCtx.createGain();
+    ng.gain.setValueAtTime(0.42, now+0.18); ng.gain.exponentialRampToValueAtTime(0.001, now+0.58);
+    n.connect(f); f.connect(ng); ng.connect(audioCtx.destination); n.start(now+0.18);
+    // Croak
+    const c = audioCtx.createOscillator(); c.type = 'sine';
+    c.frequency.setValueAtTime(110, now+0.55);
+    c.frequency.setValueAtTime(72, now+0.72);
+    c.frequency.setValueAtTime(110, now+0.9);
+    const cg = audioCtx.createGain();
+    cg.gain.setValueAtTime(0, now+0.55); cg.gain.linearRampToValueAtTime(0.38, now+0.6);
+    cg.gain.exponentialRampToValueAtTime(0.001, now+1.1);
+    c.connect(cg); cg.connect(audioCtx.destination); c.start(now+0.55); c.stop(now+1.2);
+  }
+}
+
+// ════════════════════════════════════════════════
+// BACKGROUND MUSIC — Naruto OST from archive.org
+// ════════════════════════════════════════════════
+const TRACKS = [
+  {
+    name: 'The Raising Fighting Spirit',
+    url: 'https://archive.org/download/NarutoTheme-TheRaisingFightingSpirit/NarutoTheme-TheRaisingFightingSpirit-www.flv2mp3.com.mp3',
+  },
+  {
+    name: 'Naruto Main Theme',
+    url: 'https://archive.org/download/tvtunes_8670/Naruto%20-%20Main%20Theme.mp3',
+  },
+];
+
+let musicPlaying = false;
+let bgAudio = null;
+let currentTrack = 0;
+
+document.getElementById('music-btn').addEventListener('click', () => {
+  if (musicPlaying) {
+    stopMusic();
+  } else {
+    startMusic();
+  }
+});
+
+function startMusic() {
+  if (!bgAudio) {
+    bgAudio = new Audio();
+    bgAudio.crossOrigin = 'anonymous';
+    bgAudio.loop = true;
+    bgAudio.volume = 0.35;
+    bgAudio.src = TRACKS[currentTrack].url;
+
+    // When current track ends naturally, play next
+    bgAudio.addEventListener('error', () => {
+      // If one track fails, try the other
+      currentTrack = (currentTrack + 1) % TRACKS.length;
+      bgAudio.src = TRACKS[currentTrack].url;
+      bgAudio.play().catch(() => {});
+      updateMusicLabel();
+    });
+  }
+
+  bgAudio.play().then(() => {
+    musicPlaying = true;
+    updateMusicLabel();
+    document.getElementById('music-btn').classList.add('playing');
+  }).catch(err => {
+    console.warn('Music play failed:', err);
+  });
+}
+
+function stopMusic() {
+  musicPlaying = false;
+  if (bgAudio) bgAudio.pause();
+  document.getElementById('music-btn').classList.remove('playing');
+  updateMusicLabel();
+}
+
+function updateMusicLabel() {
+  const btn = document.getElementById('music-btn');
+  if (musicPlaying) {
+    btn.textContent = '🎵 ' + TRACKS[currentTrack].name;
+  } else {
+    btn.textContent = '🎵 Music: OFF';
+  }
+}
+
+// Track switcher — click while playing to switch track
+document.getElementById('music-btn').addEventListener('dblclick', () => {
+  if (!musicPlaying) return;
+  currentTrack = (currentTrack + 1) % TRACKS.length;
+  bgAudio.src = TRACKS[currentTrack].url;
+  bgAudio.play().catch(() => {});
+  updateMusicLabel();
+});
+</script>
+</body>
+</html>
