@@ -468,10 +468,9 @@ const voiceClips = {};
 JUTSU.forEach(j => {
   if (j.voiceUrl) {
     const audio = new Audio();
-    audio.crossOrigin = 'anonymous';
     audio.preload = 'auto';
     audio.src = j.voiceUrl;
-    audio.volume = 0.7;
+    audio.volume = 0.8;
     voiceClips[j.id] = audio;
   }
 });
@@ -526,6 +525,12 @@ document.getElementById('sound-btn').addEventListener('click', () => {
 document.getElementById('start-btn').addEventListener('click', startCamera);
 
 function startCamera() {
+  // Unlock all voice clips during this user gesture so browsers
+  // allow .play() later from the MediaPipe callback
+  Object.values(voiceClips).forEach(a => {
+    a.play().then(() => { a.pause(); a.currentTime = 0; }).catch(() => {});
+  });
+
   lastFrame = document.createElement('canvas');
 
   const hands = new Hands({
