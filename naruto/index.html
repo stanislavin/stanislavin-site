@@ -498,11 +498,9 @@ main {
   </aside>
 </main>
 
-<!-- MediaPipe Hands (camera_utils not needed — using getUserMedia directly for iOS compat) -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<!-- MediaPipe Tasks Vision (newer API with better iOS support) -->
+<script type="module">
 
-<script>
 // ════════════════════════════════════════════════
 // JUTSU DEFINITIONS
 // ════════════════════════════════════════════════
@@ -669,63 +667,40 @@ function startCamera() {
 
   setStatus('loading', 'Loading hand tracking model...', 0);
 
-  // ── MediaPipe Hands ─────────────────────────────
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  let hands;
+  // ── MediaPipe Tasks Vision (new API) ────────────
+  let handLandmarker = null;
 
-  try {
-    hands = new Hands({
-      locateFile: f => {
-        // Track file loading progress
-        const files = { 'hands.binarypb': 20, 'hands_solution_packed_assets.data': 50,
-                        'hands_solution_simd_wasm_bin.wasm': 80, 'hands_solution_packed_assets_loader.js': 90 };
-        const pct = files[f] || 60;
-        setStatus('loading', `Loading: ${f.split('.')[0]}...`, pct);
-        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`;
-      }
-    });
-    hands.setOptions({
-      maxNumHands: 1,
-      modelComplexity: 0,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.4,
-    });
-    let mpFrames = 0, mpHandFrames = 0;
-    hands.onResults(results => {
-      mpFrames++;
-      const hasHands = results.multiHandLandmarks && results.multiHandLandmarks.length > 0;
-      if (hasHands) mpHandFrames++;
-      if (!mpReady) {
-        mpReady = true;
-        setStatus('ok', 'Hand tracking active');
-      }
-      // Show debug info for first 300 frames (~10s)
-      if (mpFrames <= 300 && mpFrames % 30 === 0) {
-        setStatus('ok', `${mpFrames}f, ${mpHandFrames}h (${canvasEl.width}x${canvasEl.height} v:${videoEl.videoWidth}x${videoEl.videoHeight})`);
-      }
-      if (mpFrames === 300 && mpHandFrames > 0) {
-        setTimeout(() => setStatus(''), 2000);
-      }
-      onResults(results);
-    });
-  } catch(e) {
-    mpFailed = true;
-    setStatus('error', 'Hand tracking failed to init: ' + e.message);
-    hands = null;
+  async function initHandLandmarker() {
+    try {
+      const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs');
+      const { HandLandmarker, FilesetResolver } = vision;
+      setStatus('loading', 'Loading vision WASM...', 30);
+      const wasmFileset = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm'
+      );
+      setStatus('loading', 'Loading hand model...', 60);
+      handLandmarker = await HandLandmarker.createFromOptions(wasmFileset, {
+        baseOptions: {
+          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        numHands: 2,
+        minHandDetectionConfidence: 0.5,
+        minHandPresenceConfidence: 0.5,
+        minTrackingConfidence: 0.4,
+      });
+      mpReady = true;
+      setStatus('ok', 'Hand tracking active');
+      setTimeout(() => setStatus(''), 3000);
+    } catch(e) {
+      mpFailed = true;
+      setStatus('error', 'Hand tracking failed: ' + e.message);
+    }
   }
 
-  // Timeout: if no results after 15s, show diagnostic
-  const mpTimeout = setTimeout(() => {
-    if (!mpReady && !mpFailed) {
-      mpFailed = true;
-      const ua = navigator.userAgent;
-      setStatus('error',
-        'Hand tracking not responding. ' +
-        'Device may not support WebAssembly SIMD.<br>' +
-        '<small style="opacity:0.6">' + ua.slice(0, 80) + '</small>'
-      );
-    }
-  }, 15000);
+  // Start model loading immediately
+  initHandLandmarker();
 
   // ── Camera setup ────────────────────────────────
   navigator.mediaDevices.getUserMedia({
@@ -746,28 +721,35 @@ function startCamera() {
       document.getElementById('permission-overlay').style.display = 'none';
       if (!musicPlaying) startMusic();
 
-      // Frame loop — draw video + send to MediaPipe
-      async function frameLoop() {
+      let mpFrames = 0, mpHandFrames = 0;
+
+      // Frame loop — detect hands synchronously per frame
+      function frameLoop() {
         if (videoEl.readyState >= 2) {
-          // Send to MediaPipe if available
-          if (hands && !mpFailed) {
+          let landmarks = null;
+          if (handLandmarker && !mpFailed) {
             try {
-              await hands.send({ image: videoEl });
-              mpSendErrors = 0;
+              const results = handLandmarker.detectForVideo(videoEl, performance.now());
+              landmarks = results.landmarks; // array of hand landmark arrays
+              mpFrames++;
+              if (landmarks && landmarks.length > 0) mpHandFrames++;
+              // Debug info for first 300 frames
+              if (mpFrames <= 300 && mpFrames % 30 === 0) {
+                setStatus('ok', `${mpFrames}f, ${mpHandFrames}h (${vw}x${vh})`);
+              }
+              if (mpFrames === 300 && mpHandFrames > 0) {
+                setTimeout(() => setStatus(''), 2000);
+              }
             } catch(e) {
               mpSendErrors++;
-              if (mpSendErrors === 1) {
-                setStatus('error', 'Hand tracking error: ' + e.message);
-              }
               if (mpSendErrors > 10 && !mpFailed) {
                 mpFailed = true;
-                setStatus('error',
-                  'Hand tracking crashed after ' + mpSendErrors + ' errors.<br>' +
-                  '<small style="opacity:0.6">' + e.message + '</small>'
-                );
+                setStatus('error', 'Hand tracking error: ' + e.message);
               }
             }
           }
+          // Render using landmarks (compatible format)
+          onResultsNew(landmarks);
         }
         requestAnimationFrame(frameLoop);
       }
@@ -785,7 +767,36 @@ function startCamera() {
 // ════════════════════════════════════════════════
 // MAIN RENDER
 // ════════════════════════════════════════════════
-function onResults(results) {
+// Hand connections for skeleton drawing (same as HAND_CONNECTIONS from old API)
+const HAND_CONNS = [
+  [0,1],[1,2],[2,3],[3,4],       // thumb
+  [0,5],[5,6],[6,7],[7,8],       // index
+  [0,9],[9,10],[10,11],[11,12],  // middle  -- fixed: was [5,9]
+  [0,13],[13,14],[14,15],[15,16],// ring    -- fixed: was [9,13]
+  [0,17],[17,18],[18,19],[19,20],// pinky   -- fixed: was [13,17]
+  [5,9],[9,13],[13,17],          // palm
+];
+
+function drawHandSkeleton(ctx, lm, W, H, color) {
+  // Draw connections
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  for (const [a, b] of HAND_CONNS) {
+    ctx.beginPath();
+    ctx.moveTo(lm[a].x * W, lm[a].y * H);
+    ctx.lineTo(lm[b].x * W, lm[b].y * H);
+    ctx.stroke();
+  }
+  // Draw landmarks
+  ctx.fillStyle = color;
+  for (const p of lm) {
+    ctx.beginPath();
+    ctx.arc(p.x * W, p.y * H, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function onResultsNew(landmarks) {
   lastResultTime = Date.now();
   const W = canvasEl.width;
   const H = canvasEl.height;
@@ -797,7 +808,7 @@ function onResults(results) {
   lfx.save();
   lfx.scale(-1, 1);
   lfx.translate(-W, 0);
-  lfx.drawImage(results.image, 0, 0, W, H);
+  lfx.drawImage(videoEl, 0, 0, W, H);
   lfx.restore();
 
   ctx.clearRect(0, 0, W, H);
@@ -807,22 +818,27 @@ function onResults(results) {
   if (activeEffect && activeEffect.id === 'shadowclone') ctx.globalAlpha = 0.82;
   ctx.scale(-1, 1);
   ctx.translate(-W, 0);
-  ctx.drawImage(results.image, 0, 0, W, H);
+  ctx.drawImage(videoEl, 0, 0, W, H);
   ctx.restore();
 
+  // Convert landmarks to legacy-compatible format (mirrored x for display)
+  const multiHandLandmarks = landmarks && landmarks.length > 0
+    ? landmarks.map(hand => hand.map(p => ({ ...p })))
+    : null;
+
   // 3. Draw hand skeleton
-  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+  if (multiHandLandmarks) {
     const effColor = activeEffect ? activeEffect.color : 'rgba(255,107,0,0.85)';
-    for (const lm of results.multiHandLandmarks) {
+    for (const lm of multiHandLandmarks) {
+      // Mirror x for display (camera is mirrored)
       const mlm = lm.map(p => ({ ...p, x: 1 - p.x }));
-      drawConnectors(ctx, mlm, HAND_CONNECTIONS, { color: effColor, lineWidth: 2 });
-      drawLandmarks(ctx, mlm, { color: '#FFB800', fillColor: effColor, radius: 3, lineWidth: 1 });
+      drawHandSkeleton(ctx, mlm, W, H, effColor);
     }
   }
 
   // 4. Gesture detection + charge
-  const g = detectGesture(results.multiHandLandmarks);
-  handleGesture(g, results.multiHandLandmarks, W, H);
+  const g = detectGesture(multiHandLandmarks);
+  handleGesture(g, multiHandLandmarks, W, H);
 
   // 5. Render active effect
   if (activeEffect) {
@@ -832,7 +848,7 @@ function onResults(results) {
     if (t >= 1) {
       endEffect();
     } else {
-      renderEffect(activeEffect.id, W, H, t, results.multiHandLandmarks);
+      renderEffect(activeEffect.id, W, H, t, multiHandLandmarks);
     }
   }
 }
