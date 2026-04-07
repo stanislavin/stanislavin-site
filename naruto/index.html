@@ -723,8 +723,7 @@ function startCamera() {
         });
       }
       mpReady = true;
-      setStatus('ok', 'Hand tracking active (' + delegate + ')');
-      setTimeout(() => setStatus(''), 3000);
+      setStatus('ok', 'Hand tracking active (' + delegate + '). Waiting for frames...');
     } catch(e) {
       mpFailed = true;
       setStatus('error', 'Hand tracking failed: ' + e.message);
@@ -756,31 +755,38 @@ function startCamera() {
       let mpFrames = 0, mpHandFrames = 0;
 
       // Frame loop — detect hands synchronously per frame
+      let lastTs = -1;
       function frameLoop() {
         if (videoEl.readyState >= 2) {
           let landmarks = null;
           if (handLandmarker && !mpFailed) {
             try {
-              const results = handLandmarker.detectForVideo(videoEl, performance.now());
-              landmarks = results.landmarks; // array of hand landmark arrays
+              const now = performance.now();
+              // detectForVideo requires strictly increasing timestamps
+              const ts = now > lastTs ? now : lastTs + 1;
+              lastTs = ts;
+              const results = handLandmarker.detectForVideo(videoEl, ts);
+              landmarks = results.landmarks;
               mpFrames++;
               if (landmarks && landmarks.length > 0) mpHandFrames++;
-              // Debug info for first 300 frames
-              if (mpFrames <= 300 && mpFrames % 30 === 0) {
+              // Debug info — keep showing until hands detected
+              if (mpFrames % 60 === 0) {
                 setStatus('ok', `${mpFrames}f, ${mpHandFrames}h (${vw}x${vh})`);
               }
-              if (mpFrames === 300 && mpHandFrames > 0) {
+              if (mpHandFrames > 0 && mpFrames > 300) {
                 setTimeout(() => setStatus(''), 2000);
               }
             } catch(e) {
               mpSendErrors++;
+              if (mpSendErrors <= 3) {
+                setStatus('error', 'Frame error #' + mpSendErrors + ': ' + e.message);
+              }
               if (mpSendErrors > 10 && !mpFailed) {
                 mpFailed = true;
-                setStatus('error', 'Hand tracking error: ' + e.message);
+                setStatus('error', 'Hand tracking crashed: ' + e.message);
               }
             }
           }
-          // Render using landmarks (compatible format)
           onResultsNew(landmarks);
         }
         requestAnimationFrame(frameLoop);
