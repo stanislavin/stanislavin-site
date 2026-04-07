@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Приключения Оли дизайнера</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="menu" class="screen">
+            <h1>Приключения Оли дизайнера</h1>
+            <h2>В поисках квартиры мечты!</h2>
+            <p>Пройди через три города своего пути: Москву, Белград и Петербург</p>
+            <p>Побеждай снобов, налоговую и сложных клиентов!</p>
+            <button id="startBtn">Начать игру</button>
+            <div class="controls">
+                <p><strong>Управление:</strong></p>
+                <p>← → / A D - движение</p>
+                <p>↑ / W / ПРОБЕЛ - прыжок</p>
+            </div>
+
+        </div>
+        <div id="gameOver" class="screen hidden">
+            <h1>Game Over</h1>
+            <p>Не получилось накопить на квартиру...</p>
+            <button id="retryBtn">Попробовать снова</button>
+        </div>
+        <div id="victory" class="screen hidden">
+            <h1>🎉 Поздравляем! 🎉</h1>
+            <h2>Оля купила квартиру мечты!</h2>
+            <p id="victoryMoney"></p>
+            <p>С Днём Рождения, Оля! 🎂</p>
+            <button id="playAgainBtn">Сыграть ещё раз</button>
+        </div>
+        <div id="hud" class="hidden">
+            <div class="hud-item">
+                <span>💰 <span id="money">0</span> ₽</span>
+            </div>
+            <div class="hud-item">
+                <span>❤️ <span id="lives">3</span></span>
+            </div>
+            <div class="hud-item">
+                <span id="levelName">Москва</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Scripts -->
+    <script src="js/audio.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/physics.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/enemy.js"></script>
+    <script src="js/money.js"></script>
+    <script src="js/companion.js"></script>
+    <script src="js/boss.js"></script>
+    <script src="js/levels.js"></script>
+    <script src="js/game.js"></script>
+</body>
+
+</html>
