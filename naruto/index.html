@@ -686,11 +686,11 @@ function startCamera() {
     });
     hands.setOptions({
       maxNumHands: 1,
-      modelComplexity: 1,
+      modelComplexity: 0,
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.4,
     });
-    let mpFrames = 0, mpHandFrames = 0, pixelDebug = '';
+    let mpFrames = 0, mpHandFrames = 0;
     hands.onResults(results => {
       mpFrames++;
       const hasHands = results.multiHandLandmarks && results.multiHandLandmarks.length > 0;
@@ -701,7 +701,7 @@ function startCamera() {
       }
       // Show debug info for first 300 frames (~10s)
       if (mpFrames <= 300 && mpFrames % 30 === 0) {
-        setStatus('ok', `${mpFrames}f, ${mpHandFrames}h (${canvasEl.width}x${canvasEl.height}) ${pixelDebug}`);
+        setStatus('ok', `${mpFrames}f, ${mpHandFrames}h (${canvasEl.width}x${canvasEl.height} v:${videoEl.videoWidth}x${videoEl.videoHeight})`);
       }
       if (mpFrames === 300 && mpHandFrames > 0) {
         setTimeout(() => setStatus(''), 2000);
@@ -746,26 +746,13 @@ function startCamera() {
       document.getElementById('permission-overlay').style.display = 'none';
       if (!musicPlaying) startMusic();
 
-      // Intermediate canvas for iOS compatibility
-      const sendCanvas = document.createElement('canvas');
-      sendCanvas.width = vw;
-      sendCanvas.height = vh;
-      const sendCtx = sendCanvas.getContext('2d', { willReadFrequently: true });
-
       // Frame loop — draw video + send to MediaPipe
       async function frameLoop() {
         if (videoEl.readyState >= 2) {
           // Send to MediaPipe if available
           if (hands && !mpFailed) {
             try {
-              // Draw video to temp canvas first (fixes detection on some iOS devices)
-              sendCtx.drawImage(videoEl, 0, 0, vw, vh);
-              // Sample center pixel on first frame to verify canvas has real data
-              if (!pixelDebug) {
-                const px = sendCtx.getImageData(vw/2|0, vh/2|0, 1, 1).data;
-                pixelDebug = `px[${px[0]},${px[1]},${px[2]},${px[3]}]`;
-              }
-              await hands.send({ image: sendCanvas });
+              await hands.send({ image: videoEl });
               mpSendErrors = 0;
             } catch(e) {
               mpSendErrors++;
